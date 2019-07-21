@@ -1,0 +1,162 @@
+version: '3.3'
+
+services:
+
+  nextcloud_db:
+    image: mariadb
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    restart: unless-stopped
+    volumes:
+      - nextcloud_db:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: nextcloud_db
+      MYSQL_USER: nextcloud_db_user
+      MYSQL_PASSWORD: 6vZrwy4SEPQCYDk
+      MYSQL_ROOT_PASSWORD: 6vZrwy4SEPQCYDk
+
+  # nextcloud_office:
+  #   image: collabora/code
+  #   environment:
+  #     # put the domain name you select for your NextCloud instance
+  #     # here! Escape any . in your domain name by preceding them with \\
+  #     domain: cloud\\.arminfroehlich\\.de
+  #     username: admin
+  #     # put your own strong password in here!
+  #     password: wdpSSSMVQ8Zwy
+  #     LETSENCRYPT_EMAIL: mail@arminfroehlich.de
+  #     VIRTUAL_HOST: office.arminfroehlich.de
+  #     LETSENCRYPT_HOST: office.arminfroehlich.de
+  #   ports:
+  #     - 9980:9980
+  #   cap_add:
+  #     - MKNOD
+  #   # volumes_from:
+  #     # - nextcloud
+  #   ports:
+  #     - 127.0.0.1:9980:9980
+  #   links:
+  #     - nextcloud
+  #   restart: unless-stopped
+
+  nextcloud:
+    image: nextcloud
+    depends_on:
+      - nextcloud_db
+    volumes:
+      - nextcloud:/var/www/html
+    restart: unless-stopped
+    environment:
+      LETSENCRYPT_EMAIL: mail@arminfroehlich.de
+      VIRTUAL_HOST: cloud.arminfroehlich.de
+      LETSENCRYPT_HOST: cloud.arminfroehlich.de
+      # VIRTUAL_ROOT: /var/www/html
+      # VIRTUAL_PORT: 9000
+      # VIRTUAL_PROTO: fastcgi
+
+  wordpress_db:
+    image: mariadb:latest
+    restart: unless-stopped
+    volumes:
+      - wordpress_db:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: wordpress_db
+      MYSQL_USER: wp_db_user
+      MYSQL_PASSWORD: 6vZrwy4SEPQCYDk
+      MYSQL_ROOT_PASSWORD: 6vZrwy4SEPQCYDk
+      # MYSQL_RANDOM_ROOT_PASSWORD: '1'
+
+  wordpress:
+    image: wordpress:latest
+    restart: unless-stopped
+    depends_on:
+      - wordpress_db
+    volumes:
+       - wordpress:/var/www/html
+       - wordpress_db:/var/lib/mysql
+    environment:
+      LETSENCRYPT_EMAIL: mail@arminfroehlich.de
+      VIRTUAL_HOST: blog.arminfroehlich.de
+      LETSENCRYPT_HOST: blog.arminfroehlich.de
+      WORDPRESS_DB_HOST: wordpress_db #:3306
+      WORDPRESS_DB_USER: wp_db_user
+      WORDPRESS_DB_PASSWORD: 6vZrwy4SEPQCYDk
+      WORDPRESS_DB_NAME: wordpress_db
+
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    hostname: git.arminfroehlich.de
+    restart: unless-stopped
+    ports:
+    - target: 22
+      published: 39904
+    volumes:
+      # - ./gitlab/config:/etc/gitlab
+      # - ./gitlab/logs:/var/log/gitlab
+      # - ./gitlab/data:/var/opt/gitlab
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
+    environment:
+      GITLAB_OMNIBUS_CONFIG: "registry['log_level'] = 'warn'"
+      LETSENCRYPT_EMAIL: mail@arminfroehlich.de
+      VIRTUAL_HOST: git.arminfroehlich.de
+      LETSENCRYPT_HOST: git.arminfroehlich.de
+
+  gitlab-runner:
+    image: gitlab/gitlab-runner:latest
+    restart: unless-stopped
+    depends_on:
+      - gitlab
+    volumes:
+      - /srv/gitlab-runner/config:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  nginx-proxy:
+    image: jwilder/nginx-proxy:latest
+    labels:
+        com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - proxy_conf:/etc/nginx/conf.d
+      - proxy_vhost:/etc/nginx/vhost.d
+      - proxy_html:/usr/share/nginx/html
+      - proxy_dhparam:/etc/nginx/dhparam
+      - proxy_certs:/etc/nginx/certs:ro
+      - ./uploadsize.conf:/etc/nginx/conf.d/uploadsize.conf:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    # network_mode: bridge
+
+  letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion:latest
+    # container_name: nginx-proxy-le
+    restart: unless-stopped
+    # depends_on:
+      # - nginx-proxy
+    environment:
+      DEFAULT_EMAIL: mail@arminfroehlich.de
+    volumes:
+      - proxy_conf:/etc/nginx/conf.d
+      - proxy_vhost:/etc/nginx/vhost.d
+      - proxy_html:/usr/share/nginx/html
+      - proxy_dhparam:/etc/nginx/dhparam
+      - proxy_certs:/etc/nginx/certs:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # network_mode: bridge
+
+volumes:
+  proxy_conf:
+  proxy_vhost:
+  proxy_html:
+  proxy_dhparam:
+  proxy_certs:
+  wordpress:
+  wordpress_db:
+  nextcloud:
+  nextcloud_db:
+  gitlab_config:
+  gitlab_logs:
+  gitlab_data:
