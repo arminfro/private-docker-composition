@@ -95,6 +95,18 @@ services:
       WORDPRESS_DB_PASSWORD: ${WP_MYSQL_PASSWORD}
   # Wordpress end # # #
 
+  # # # # # Adminer start
+  adminer:
+    image: adminer #:fastcgi
+    restart: unless-stopped
+    environment:
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      VIRTUAL_HOST: ${ADMINER_VIRTUAL_HOST}
+      LETSENCRYPT_HOST: ${ADMINER_VIRTUAL_HOST}
+      # VIRTUAL_PORT: 9000
+      # VIRTUAL_PROTO: fastcgi
+  # Adminer end # # #
+
   # # # # Gitlab start
   gitlab:
     image: gitlab/gitlab-ce:latest
@@ -122,6 +134,72 @@ services:
       - /srv/gitlab-runner/config:/etc/gitlab-runner
       - /var/run/docker.sock:/var/run/docker.sock
   # Gitlab end # # #
+
+  # # # # Prometheus start
+  prometheus:
+    image: prom/prometheus:v2.1.0
+    restart: unless-stopped
+    volumes:
+      - ./monitor/prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    links:
+      - cadvisor:cadvisor
+      - alertmanager:alertmanager
+    depends_on:
+      - cadvisor
+
+  node-exporter:
+    image: prom/node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - --collector.filesystem.ignored-mount-points
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+
+  alertmanager:
+    image: prom/alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./monitor/alertmanager/:/etc/alertmanager/
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+
+  cadvisor:
+    image: google/cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
+  grafana:
+    image: grafana/grafana
+    restart: unless-stopped
+    user: "104"
+    depends_on:
+      - prometheus
+    environment:
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      VIRTUAL_HOST: ${GRAFANA_VIRTUAL_HOST}
+      LETSENCRYPT_HOST: ${GRAFANA_VIRTUAL_HOST}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitor/grafana/provisioning/:/etc/grafana/provisioning/
+    env_file:
+      - ./monitor/grafana/config.monitoring
+  # Prometheus end # # #
 
   # # # # Proxy-Webserver start
   letsencrypt:
@@ -161,10 +239,16 @@ volumes:
   proxy_html:
   proxy_dhparam:
   proxy_certs:
+
   wordpress:
   wordpress_db:
+
   nextcloud:
   nextcloud_db:
+
   gitlab_config:
   gitlab_logs:
   gitlab_data:
+
+  prometheus_data: {}
+  grafana_data: {}
