@@ -9,10 +9,177 @@ services:
     volumes:
       - nextcloud_db:/var/lib/mysql
     environment:
-      MYSQL_DATABASE: nextcloud_db
-      MYSQL_USER: nextcloud_db_user
-      MYSQL_PASSWORD: 6vZrwy4SEPQCYDk
-      MYSQL_ROOT_PASSWORD: 6vZrwy4SEPQCYDk
+      MYSQL_DATABASE: ${NC_MYSQL_DATABASE}
+      MYSQL_USER: ${NC_MYSQL_USER}
+      MYSQL_PASSWORD: ${NC_MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${NC_MYSQL_ROOT_PASSWORD}
+
+  nextcloud_redis:
+    image: redis:alpine
+    restart: unless-stopped
+
+  nextcloud_app:
+    image: nextcloud:16.0.3-fpm
+    restart: unless-stopped
+    volumes:
+      - nextcloud:/var/www/html
+    environment:
+      - MYSQL_HOST=nextcloud_db
+      - REDIS_HOST=nextcloud_redis
+    # env_file:
+      # - db.env
+    depends_on:
+      - nextcloud_db
+      - nextcloud_redis
+
+  nextcloud_web:
+    build: ./nextcloud_web
+    restart: unless-stopped
+    volumes:
+      - nextcloud:/var/www/html:ro
+    environment:
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      VIRTUAL_HOST: ${NC_URL}
+      LETSENCRYPT_HOST: ${NC_URL}
+    depends_on:
+      - nextcloud_app
+    # networks:
+      # - nextcloud_proxy
+      # - default
+
+  nextcloud_cron:
+    image: nextcloud:fpm-alpine
+    restart: unless-stopped
+    volumes:
+      - nextcloud:/var/www/html
+    entrypoint: /cron.sh
+    depends_on:
+      - nextcloud_db
+      - nextcloud_redis
+
+  nextcloud_letsencrypt_companion:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    restart: unless-stopped
+    volumes:
+      - proxy_certs:/etc/nginx/certs
+      - proxy_vhost:/etc/nginx/vhost.d
+      - proxy_html:/usr/share/nginx/html
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # networks:
+      # - nextcloud_proxy
+    depends_on:
+      - nginx_proxy
+
+  wordpress_db:
+    image: mariadb:latest
+    restart: unless-stopped
+    volumes:
+      - wordpress_db:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: ${WP_MYSQL_DATABASE}
+      MYSQL_USER: ${WP_MYSQL_USER}
+      MYSQL_PASSWORD: ${WP_MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${WP_MYSQL_ROOT_PASSWORD}
+      # MYSQL_RANDOM_ROOT_PASSWORD: '1'
+
+  wordpress:
+    image: wordpress:latest
+    restart: unless-stopped
+    depends_on:
+      - wordpress_db
+    volumes:
+       - wordpress:/var/www/html
+       - wordpress_db:/var/lib/mysql
+    environment:
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      VIRTUAL_HOST: ${WP_URL}
+      LETSENCRYPT_HOST: ${WP_URL}
+      WORDPRESS_DB_HOST: wordpress_db #:3306
+      WORDPRESS_DB_NAME: wordpress_db
+      WORDPRESS_DB_USER: ${WP_MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${WP_MYSQL_PASSWORD}
+
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    hostname: ${GL_URL}
+    restart: unless-stopped
+    ports:
+    - target: 22
+      published: 39904 # PUBLIC_SSH_PORT, can't be a string from .env
+    volumes:
+      # - ./gitlab/config:/etc/gitlab
+      # - ./gitlab/logs:/var/log/gitlab
+      # - ./gitlab/data:/var/opt/gitlab
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
+    environment:
+      GITLAB_OMNIBUS_CONFIG: "registry['log_level'] = 'warn'"
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      VIRTUAL_HOST: ${GL_URL}
+      LETSENCRYPT_HOST: ${GL_URL}
+
+  gitlab-runner:
+    image: gitlab/gitlab-runner:latest
+    restart: unless-stopped
+    depends_on:
+      - gitlab
+    volumes:
+      - /srv/gitlab-runner/config:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion:latest
+    # container_name: nginx-proxy-le
+    restart: unless-stopped
+    depends_on:
+      - nginx_proxy
+    environment:
+      DEFAULT_EMAIL: ${LETSENCRYPT_EMAIL}
+    volumes:
+      - proxy_conf:/etc/nginx/conf.d
+      - proxy_vhost:/etc/nginx/vhost.d
+      - proxy_html:/usr/share/nginx/html
+      - proxy_dhparam:/etc/nginx/dhparam
+      - proxy_certs:/etc/nginx/certs:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    # network_mode: bridge
+
+  nginx_proxy:
+    build: ./nginx_proxy
+    restart: unless-stopped
+    container_name: nginx-proxy
+    ports:
+      - 80:80
+      - 443:443
+    labels:
+      com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
+    volumes:
+      - proxy_certs:/etc/nginx/certs:ro
+      - proxy_vhost:/etc/nginx/vhost.d
+      - proxy_html:/usr/share/nginx/html
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    # networks:
+      # - nextcloud_proxy
+
+  # nginx-proxy:
+    # image: jwilder/nginx-proxy:latest
+    # labels:
+        # com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
+    # container_name: nginx-proxy
+    # restart: unless-stopped
+    # ports:
+      # - 80:80
+      # - 443:443
+    # volumes:
+      # - proxy_conf:/etc/nginx/conf.d
+      # - proxy_vhost:/etc/nginx/vhost.d
+      # - proxy_html:/usr/share/nginx/html
+      # - proxy_dhparam:/etc/nginx/dhparam
+      # - proxy_certs:/etc/nginx/certs:ro
+      # - ./uploadsize.conf:/etc/nginx/conf.d/uploadsize.conf:ro
+      # - /var/run/docker.sock:/tmp/docker.sock:ro
+    # # network_mode: bridge
 
   # nextcloud_office:
   #   image: collabora/code
@@ -38,114 +205,20 @@ services:
   #     - nextcloud
   #   restart: unless-stopped
 
-  nextcloud:
-    image: nextcloud
-    depends_on:
-      - nextcloud_db
-    volumes:
-      - nextcloud:/var/www/html
-    restart: unless-stopped
-    environment:
-      LETSENCRYPT_EMAIL: mail@arminfroehlich.de
-      VIRTUAL_HOST: cloud.arminfroehlich.de
-      LETSENCRYPT_HOST: cloud.arminfroehlich.de
-      # VIRTUAL_ROOT: /var/www/html
-      # VIRTUAL_PORT: 9000
-      # VIRTUAL_PROTO: fastcgi
-
-  wordpress_db:
-    image: mariadb:latest
-    restart: unless-stopped
-    volumes:
-      - wordpress_db:/var/lib/mysql
-    environment:
-      MYSQL_DATABASE: wordpress_db
-      MYSQL_USER: wp_db_user
-      MYSQL_PASSWORD: 6vZrwy4SEPQCYDk
-      MYSQL_ROOT_PASSWORD: 6vZrwy4SEPQCYDk
-      # MYSQL_RANDOM_ROOT_PASSWORD: '1'
-
-  wordpress:
-    image: wordpress:latest
-    restart: unless-stopped
-    depends_on:
-      - wordpress_db
-    volumes:
-       - wordpress:/var/www/html
-       - wordpress_db:/var/lib/mysql
-    environment:
-      LETSENCRYPT_EMAIL: mail@arminfroehlich.de
-      VIRTUAL_HOST: blog.arminfroehlich.de
-      LETSENCRYPT_HOST: blog.arminfroehlich.de
-      WORDPRESS_DB_HOST: wordpress_db #:3306
-      WORDPRESS_DB_USER: wp_db_user
-      WORDPRESS_DB_PASSWORD: 6vZrwy4SEPQCYDk
-      WORDPRESS_DB_NAME: wordpress_db
-
-  gitlab:
-    image: gitlab/gitlab-ce:latest
-    hostname: git.arminfroehlich.de
-    restart: unless-stopped
-    ports:
-    - target: 22
-      published: 39904
-    volumes:
-      # - ./gitlab/config:/etc/gitlab
-      # - ./gitlab/logs:/var/log/gitlab
-      # - ./gitlab/data:/var/opt/gitlab
-      - gitlab_config:/etc/gitlab
-      - gitlab_logs:/var/log/gitlab
-      - gitlab_data:/var/opt/gitlab
-    environment:
-      GITLAB_OMNIBUS_CONFIG: "registry['log_level'] = 'warn'"
-      LETSENCRYPT_EMAIL: mail@arminfroehlich.de
-      VIRTUAL_HOST: git.arminfroehlich.de
-      LETSENCRYPT_HOST: git.arminfroehlich.de
-
-  gitlab-runner:
-    image: gitlab/gitlab-runner:latest
-    restart: unless-stopped
-    depends_on:
-      - gitlab
-    volumes:
-      - /srv/gitlab-runner/config:/etc/gitlab-runner
-      - /var/run/docker.sock:/var/run/docker.sock
-
-  nginx-proxy:
-    image: jwilder/nginx-proxy:latest
-    labels:
-        com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
-    container_name: nginx-proxy
-    restart: unless-stopped
-    ports:
-      - 80:80
-      - 443:443
-    volumes:
-      - proxy_conf:/etc/nginx/conf.d
-      - proxy_vhost:/etc/nginx/vhost.d
-      - proxy_html:/usr/share/nginx/html
-      - proxy_dhparam:/etc/nginx/dhparam
-      - proxy_certs:/etc/nginx/certs:ro
-      - ./uploadsize.conf:/etc/nginx/conf.d/uploadsize.conf:ro
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-    # network_mode: bridge
-
-  letsencrypt:
-    image: jrcs/letsencrypt-nginx-proxy-companion:latest
-    # container_name: nginx-proxy-le
-    restart: unless-stopped
-    # depends_on:
-      # - nginx-proxy
-    environment:
-      DEFAULT_EMAIL: mail@arminfroehlich.de
-    volumes:
-      - proxy_conf:/etc/nginx/conf.d
-      - proxy_vhost:/etc/nginx/vhost.d
-      - proxy_html:/usr/share/nginx/html
-      - proxy_dhparam:/etc/nginx/dhparam
-      - proxy_certs:/etc/nginx/certs:rw
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    # network_mode: bridge
+  # nextcloud:
+  #   image: nextcloud
+  #   depends_on:
+  #     - nextcloud_db
+  #   volumes:
+  #     - nextcloud:/var/www/html
+  #   restart: unless-stopped
+  #   environment:
+  #     LETSENCRYPT_EMAIL: mail@arminfroehlich.de
+  #     VIRTUAL_HOST: cloud.arminfroehlich.de
+  #     LETSENCRYPT_HOST: cloud.arminfroehlich.de
+  #     # VIRTUAL_ROOT: /var/www/html
+  #     # VIRTUAL_PORT: 9000
+  #     # VIRTUAL_PROTO: fastcgi
 
 volumes:
   proxy_conf:
@@ -160,3 +233,6 @@ volumes:
   gitlab_config:
   gitlab_logs:
   gitlab_data:
+
+# networks:
+  # nextcloud_proxy:
