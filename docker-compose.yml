@@ -26,8 +26,6 @@ services:
     environment:
       - MYSQL_HOST=nextcloud_db
       - REDIS_HOST=nextcloud_redis
-    # env_file:
-      # - db.env
     depends_on:
       - nextcloud_db
       - nextcloud_redis
@@ -43,9 +41,6 @@ services:
       LETSENCRYPT_HOST: ${NC_URL}
     depends_on:
       - nextcloud_app
-    # networks:
-      # - nextcloud_proxy
-      # - default
 
   nextcloud_cron:
     image: nextcloud:fpm-alpine
@@ -65,8 +60,6 @@ services:
       - proxy_vhost:/etc/nginx/vhost.d
       - proxy_html:/usr/share/nginx/html
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    # networks:
-      # - nextcloud_proxy
     depends_on:
       - nginx_proxy
 
@@ -80,7 +73,6 @@ services:
       MYSQL_USER: ${WP_MYSQL_USER}
       MYSQL_PASSWORD: ${WP_MYSQL_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${WP_MYSQL_ROOT_PASSWORD}
-      # MYSQL_RANDOM_ROOT_PASSWORD: '1'
 
   wordpress:
     image: wordpress:latest
@@ -94,7 +86,7 @@ services:
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
       VIRTUAL_HOST: ${WP_URL}
       LETSENCRYPT_HOST: ${WP_URL}
-      WORDPRESS_DB_HOST: wordpress_db #:3306
+      WORDPRESS_DB_HOST: wordpress_db
       WORDPRESS_DB_NAME: wordpress_db
       WORDPRESS_DB_USER: ${WP_MYSQL_USER}
       WORDPRESS_DB_PASSWORD: ${WP_MYSQL_PASSWORD}
@@ -107,9 +99,6 @@ services:
     - target: 22
       published: 39904 # PUBLIC_SSH_PORT, can't be a string from .env
     volumes:
-      # - ./gitlab/config:/etc/gitlab
-      # - ./gitlab/logs:/var/log/gitlab
-      # - ./gitlab/data:/var/opt/gitlab
       - gitlab_config:/etc/gitlab
       - gitlab_logs:/var/log/gitlab
       - gitlab_data:/var/opt/gitlab
@@ -130,7 +119,6 @@ services:
 
   letsencrypt:
     image: jrcs/letsencrypt-nginx-proxy-companion:latest
-    # container_name: nginx-proxy-le
     restart: unless-stopped
     depends_on:
       - nginx_proxy
@@ -143,7 +131,6 @@ services:
       - proxy_dhparam:/etc/nginx/dhparam
       - proxy_certs:/etc/nginx/certs:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    # network_mode: bridge
 
   nginx_proxy:
     build: ./nginx_proxy
@@ -159,66 +146,6 @@ services:
       - proxy_vhost:/etc/nginx/vhost.d
       - proxy_html:/usr/share/nginx/html
       - /var/run/docker.sock:/tmp/docker.sock:ro
-    # networks:
-      # - nextcloud_proxy
-
-  # nginx-proxy:
-    # image: jwilder/nginx-proxy:latest
-    # labels:
-        # com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
-    # container_name: nginx-proxy
-    # restart: unless-stopped
-    # ports:
-      # - 80:80
-      # - 443:443
-    # volumes:
-      # - proxy_conf:/etc/nginx/conf.d
-      # - proxy_vhost:/etc/nginx/vhost.d
-      # - proxy_html:/usr/share/nginx/html
-      # - proxy_dhparam:/etc/nginx/dhparam
-      # - proxy_certs:/etc/nginx/certs:ro
-      # - ./uploadsize.conf:/etc/nginx/conf.d/uploadsize.conf:ro
-      # - /var/run/docker.sock:/tmp/docker.sock:ro
-    # # network_mode: bridge
-
-  # nextcloud_office:
-  #   image: collabora/code
-  #   environment:
-  #     # put the domain name you select for your NextCloud instance
-  #     # here! Escape any . in your domain name by preceding them with \\
-  #     domain: cloud\\.arminfroehlich\\.de
-  #     username: admin
-  #     # put your own strong password in here!
-  #     password: wdpSSSMVQ8Zwy
-  #     LETSENCRYPT_EMAIL: mail@arminfroehlich.de
-  #     VIRTUAL_HOST: office.arminfroehlich.de
-  #     LETSENCRYPT_HOST: office.arminfroehlich.de
-  #   ports:
-  #     - 9980:9980
-  #   cap_add:
-  #     - MKNOD
-  #   # volumes_from:
-  #     # - nextcloud
-  #   ports:
-  #     - 127.0.0.1:9980:9980
-  #   links:
-  #     - nextcloud
-  #   restart: unless-stopped
-
-  # nextcloud:
-  #   image: nextcloud
-  #   depends_on:
-  #     - nextcloud_db
-  #   volumes:
-  #     - nextcloud:/var/www/html
-  #   restart: unless-stopped
-  #   environment:
-  #     LETSENCRYPT_EMAIL: mail@arminfroehlich.de
-  #     VIRTUAL_HOST: cloud.arminfroehlich.de
-  #     LETSENCRYPT_HOST: cloud.arminfroehlich.de
-  #     # VIRTUAL_ROOT: /var/www/html
-  #     # VIRTUAL_PORT: 9000
-  #     # VIRTUAL_PROTO: fastcgi
 
 volumes:
   proxy_conf:
@@ -233,6 +160,3 @@ volumes:
   gitlab_config:
   gitlab_logs:
   gitlab_data:
-
-# networks:
-  # nextcloud_proxy:
