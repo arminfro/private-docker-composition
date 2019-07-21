@@ -2,6 +2,7 @@ version: '3.3'
 
 services:
 
+  # # # # Nextcloud start
   nextcloud_db:
     image: mariadb
     command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
@@ -19,7 +20,7 @@ services:
     restart: unless-stopped
 
   nextcloud_app:
-    image: nextcloud:16.0.3-fpm
+    build: ./nextcloud_app
     restart: unless-stopped
     volumes:
       - nextcloud:/var/www/html
@@ -62,7 +63,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - nginx_proxy
+  # Nextcloud end # # #
 
+  # # # # Wordpress start
   wordpress_db:
     image: mariadb:latest
     restart: unless-stopped
@@ -90,7 +93,9 @@ services:
       WORDPRESS_DB_NAME: wordpress_db
       WORDPRESS_DB_USER: ${WP_MYSQL_USER}
       WORDPRESS_DB_PASSWORD: ${WP_MYSQL_PASSWORD}
+  # Wordpress end # # #
 
+  # # # # Gitlab start
   gitlab:
     image: gitlab/gitlab-ce:latest
     hostname: ${GL_URL}
@@ -103,7 +108,7 @@ services:
       - gitlab_logs:/var/log/gitlab
       - gitlab_data:/var/opt/gitlab
     environment:
-      GITLAB_OMNIBUS_CONFIG: "registry['log_level'] = 'warn'"
+      GITLAB_OMNIBUS_CONFIG: "registry['log_level'] = 'warn'" # @FIXME
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
       VIRTUAL_HOST: ${GL_URL}
       LETSENCRYPT_HOST: ${GL_URL}
@@ -116,7 +121,9 @@ services:
     volumes:
       - /srv/gitlab-runner/config:/etc/gitlab-runner
       - /var/run/docker.sock:/var/run/docker.sock
+  # Gitlab end # # #
 
+  # # # # Proxy-Webserver start
   letsencrypt:
     image: jrcs/letsencrypt-nginx-proxy-companion:latest
     restart: unless-stopped
@@ -146,6 +153,7 @@ services:
       - proxy_vhost:/etc/nginx/vhost.d
       - proxy_html:/usr/share/nginx/html
       - /var/run/docker.sock:/tmp/docker.sock:ro
+  # Proxy-Webserver end # # #
 
 volumes:
   proxy_conf:
