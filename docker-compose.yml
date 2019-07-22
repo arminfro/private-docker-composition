@@ -10,8 +10,8 @@ services:
     volumes:
       - nextcloud_db:/var/lib/mysql
     environment:
-      MYSQL_DATABASE: ${NC_MYSQL_DATABASE}
-      MYSQL_USER: ${NC_MYSQL_USER}
+      MYSQL_DATABASE: nextcloud_db
+      MYSQL_USER: nextcloud_db_user
       MYSQL_PASSWORD: ${NC_MYSQL_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${NC_MYSQL_ROOT_PASSWORD}
 
@@ -25,8 +25,9 @@ services:
     volumes:
       - nextcloud:/var/www/html
     environment:
-      - MYSQL_HOST=nextcloud_db
-      - REDIS_HOST=nextcloud_redis
+      MYSQL_HOST: nextcloud_db
+      REDIS_HOST: nextcloud_redis
+      NEXTCLOUD_TRUSTED_DOMAINS: ${NEXTCLOUD_TRUSTED_DOMAINS}
     depends_on:
       - nextcloud_db
       - nextcloud_redis
@@ -38,9 +39,9 @@ services:
       - nextcloud:/var/www/html:ro
     environment:
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      VIRTUAL_HOST: ${NC_URL}
+      VIRTUAL_HOST: ${NC_URLS}
       VIRTUAL_NETWORK: nginx-proxy
-      LETSENCRYPT_HOST: ${NC_URL}
+      LETSENCRYPT_HOST: ${NC_URLS}
     depends_on:
       - nextcloud_app
 
@@ -53,11 +54,11 @@ services:
       - MKNOD
     environment:
       domain: ${DOMAIN}
-      VIRTUAL_HOST: ${OFFICE_URL}
+      LETSENCRYPT_HOST: ${NC_OFFICE_URLS}
       VIRTUAL_NETWORK: nginx-proxy
       VIRTUAL_PORT: 9980
       VIRTUAL_PROTO: https
-      LETSENCRYPT_HOST: ${OFFICE_URL}
+      LETSENCRYPT_HOST: ${NC_OFFICE_URLS}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
 
   nextcloud_cron:
@@ -89,8 +90,8 @@ services:
     volumes:
       - wordpress_db:/var/lib/mysql
     environment:
-      MYSQL_DATABASE: ${WP_MYSQL_DATABASE}
-      MYSQL_USER: ${WP_MYSQL_USER}
+      MYSQL_DATABASE: worpress_db
+      MYSQL_USER: wp_db_user
       MYSQL_PASSWORD: ${WP_MYSQL_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${WP_MYSQL_ROOT_PASSWORD}
 
@@ -104,11 +105,11 @@ services:
        - wordpress_db:/var/lib/mysql
     environment:
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      VIRTUAL_HOST: ${WP_URL}
-      LETSENCRYPT_HOST: ${WP_URL}
+      VIRTUAL_HOST: ${WP_URLS}
+      LETSENCRYPT_HOST: ${WP_URLS}
       WORDPRESS_DB_HOST: wordpress_db
       WORDPRESS_DB_NAME: wordpress_db
-      WORDPRESS_DB_USER: ${WP_MYSQL_USER}
+      WORDPRESS_DB_USER: wp_db_user
       WORDPRESS_DB_PASSWORD: ${WP_MYSQL_PASSWORD}
   # Wordpress end # # #
 
@@ -118,8 +119,8 @@ services:
     restart: unless-stopped
     environment:
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      VIRTUAL_HOST: ${ADMINER_VIRTUAL_HOST}
-      LETSENCRYPT_HOST: ${ADMINER_VIRTUAL_HOST}
+      VIRTUAL_HOST: ${ADMINER_URLS}
+      LETSENCRYPT_HOST: ${ADMINER_URLS}
       # VIRTUAL_PORT: 9000
       # VIRTUAL_PROTO: fastcgi
   # Adminer end # # #
@@ -127,7 +128,7 @@ services:
   # # # # Gitlab start
   gitlab:
     image: gitlab/gitlab-ce:latest
-    hostname: ${GL_URL}
+    hostname: ${GL_URLS}
     restart: unless-stopped
     ports:
     - target: 22
@@ -137,10 +138,10 @@ services:
       - gitlab_logs:/var/log/gitlab
       - gitlab_data:/var/opt/gitlab
     environment:
-      GITLAB_OMNIBUS_CONFIG: "registry['log_level'] = 'warn'" # @FIXME
+      # GITLAB_OMNIBUS_CONFIG: "registry['log_level'] = 'warn'" # @FIXME, no effect
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      VIRTUAL_HOST: ${GL_URL}
-      LETSENCRYPT_HOST: ${GL_URL}
+      VIRTUAL_HOST: ${GL_URLS}
+      LETSENCRYPT_HOST: ${GL_URLS}
 
   gitlab-runner:
     image: gitlab/gitlab-runner:latest
@@ -209,8 +210,8 @@ services:
       - prometheus
     environment:
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      VIRTUAL_HOST: ${GRAFANA_VIRTUAL_HOST}
-      LETSENCRYPT_HOST: ${GRAFANA_VIRTUAL_HOST}
+      VIRTUAL_HOST: ${GRAFANA_URLS}
+      LETSENCRYPT_HOST: ${GRAFANA_URLS}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitor/grafana/provisioning/:/etc/grafana/provisioning/
