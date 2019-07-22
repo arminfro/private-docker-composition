@@ -91,7 +91,7 @@ services:
       - wordpress_db:/var/lib/mysql
     environment:
       MYSQL_DATABASE: worpress_db
-      MYSQL_USER: wordpress_db_user
+      MYSQL_USER: wp_db_user
       MYSQL_PASSWORD: ${WORDPRESS_MYSQL_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${WORDPRESS_MYSQL_ROOT_PASSWORD}
 
@@ -109,13 +109,13 @@ services:
       LETSENCRYPT_HOST: ${WORDPRESS_URLS}
       WORDPRESS_DB_HOST: wordpress_db
       WORDPRESS_DB_NAME: wordpress_db
-      WORDPRESS_DB_USER: wordpress_db_user
+      WORDPRESS_DB_USER: wp_db_user
       WORDPRESS_DB_PASSWORD: ${WORDPRESS_MYSQL_PASSWORD}
   # Wordpress end # # #
 
   # # # # # Adminer start
   adminer:
-    image: adminer #:fastcgi
+    image: adminer #:fastcgi # @TODO, make fastcgi image working
     restart: unless-stopped
     environment:
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
@@ -128,7 +128,7 @@ services:
   # # # # Gitlab start
   gitlab:
     image: gitlab/gitlab-ce:latest
-    hostname: ${GITLAB_URLS}
+    hostname: ${GITLAB_HOSTNAME}
     restart: unless-stopped
     ports:
     - target: 22
