@@ -83,7 +83,7 @@ Any kind of contribution is welcome, add more service groups to your liking and 
 
 ## Todos
 
-[ ] Use networks for groups
+[x] Use networks for groups
 
 [ ] Configure Grafana dashboard
 

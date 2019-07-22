@@ -7,6 +7,8 @@ services:
     image: mariadb
     command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
     restart: unless-stopped
+    networks:
+      - backend
     volumes:
       - nextcloud_db:/var/lib/mysql
     environment:
@@ -18,10 +20,14 @@ services:
   nextcloud_redis:
     image: redis:alpine
     restart: unless-stopped
+    networks:
+      - backend
 
   nextcloud_app:
     build: ./nextcloud_app
     restart: unless-stopped
+    networks:
+      - backend
     volumes:
       - nextcloud:/var/www/html
     environment:
@@ -35,6 +41,9 @@ services:
   nextcloud_web:
     build: ./nextcloud_web
     restart: unless-stopped
+    networks:
+      - frontend
+      - backend
     volumes:
       - nextcloud:/var/www/html:ro
     environment:
@@ -52,6 +61,8 @@ services:
     image: collabora/code
     cap_add:
       - MKNOD
+    networks:
+      - frontend
     environment:
       domain: ${DOMAIN}
       LETSENCRYPT_HOST: ${NEXTCLOUD_OFFICE_URLS}
@@ -64,6 +75,8 @@ services:
   nextcloud_cron:
     image: nextcloud:fpm-alpine
     restart: unless-stopped
+    networks:
+      - backend
     volumes:
       - nextcloud:/var/www/html
     entrypoint: /cron.sh
@@ -74,6 +87,8 @@ services:
   nextcloud_letsencrypt_companion:
     image: jrcs/letsencrypt-nginx-proxy-companion
     restart: unless-stopped
+    networks:
+      - backend
     volumes:
       - proxy_certs:/etc/nginx/certs
       - proxy_vhost:/etc/nginx/vhost.d
@@ -87,17 +102,22 @@ services:
   wordpress_db:
     image: mariadb:latest
     restart: unless-stopped
+    networks:
+      - frontend # not sure why, but db needs to be in frontend network
+      - backend
     volumes:
       - wordpress_db:/var/lib/mysql
     environment:
-      MYSQL_DATABASE: worpress_db
-      MYSQL_USER: wp_db_user
+      MYSQL_DATABASE: wordpress_db
+      MYSQL_USER: wordpress_db_user
       MYSQL_PASSWORD: ${WORDPRESS_MYSQL_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${WORDPRESS_MYSQL_ROOT_PASSWORD}
 
   wordpress:
     image: wordpress:latest
     restart: unless-stopped
+    networks:
+      - frontend
     depends_on:
       - wordpress_db
     volumes:
@@ -109,7 +129,7 @@ services:
       LETSENCRYPT_HOST: ${WORDPRESS_URLS}
       WORDPRESS_DB_HOST: wordpress_db
       WORDPRESS_DB_NAME: wordpress_db
-      WORDPRESS_DB_USER: wp_db_user
+      WORDPRESS_DB_USER: wordpress_db_user
       WORDPRESS_DB_PASSWORD: ${WORDPRESS_MYSQL_PASSWORD}
   # Wordpress end # # #
 
@@ -117,6 +137,8 @@ services:
   adminer:
     image: adminer #:fastcgi # @TODO, make fastcgi image working
     restart: unless-stopped
+    networks:
+      - frontend
     environment:
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
       VIRTUAL_HOST: ${ADMINER_URLS}
@@ -130,6 +152,8 @@ services:
     image: gitlab/gitlab-ce:latest
     hostname: ${GITLAB_HOSTNAME}
     restart: unless-stopped
+    networks:
+      - frontend
     ports:
     - target: 22
       published: 39904 # PUBLIC_SSH_PORT, can't be a string from .env
@@ -146,6 +170,8 @@ services:
   gitlab-runner:
     image: gitlab/gitlab-runner:latest
     restart: unless-stopped
+    networks:
+      - backend
     depends_on:
       - gitlab
     volumes:
@@ -157,6 +183,8 @@ services:
   prometheus:
     image: prom/prometheus:v2.1.0
     restart: unless-stopped
+    networks:
+      - backend
     volumes:
       - ./monitor/prometheus/:/etc/prometheus/
       - prometheus_data:/prometheus
@@ -174,6 +202,8 @@ services:
   node-exporter:
     image: prom/node-exporter
     restart: unless-stopped
+    networks:
+      - backend
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -187,6 +217,8 @@ services:
   alertmanager:
     image: prom/alertmanager
     restart: unless-stopped
+    networks:
+      - backend
     volumes:
       - ./monitor/alertmanager/:/etc/alertmanager/
     command:
@@ -196,6 +228,8 @@ services:
   cadvisor:
     image: google/cadvisor
     restart: unless-stopped
+    networks:
+      - backend
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:rw
@@ -208,6 +242,8 @@ services:
     user: "104"
     depends_on:
       - prometheus
+    networks:
+      - frontend
     environment:
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
       VIRTUAL_HOST: ${GRAFANA_URLS}
@@ -225,6 +261,8 @@ services:
     restart: unless-stopped
     depends_on:
       - nginx_proxy
+    networks:
+      - backend
     environment:
       DEFAULT_EMAIL: ${LETSENCRYPT_EMAIL}
     volumes:
@@ -242,6 +280,9 @@ services:
     ports:
       - 80:80
       - 443:443
+    networks:
+      - frontend
+      - backend
     labels:
       com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
     volumes:
@@ -270,3 +311,7 @@ volumes:
 
   prometheus_data: {}
   grafana_data: {}
+
+networks:
+  frontend:
+  backend:
