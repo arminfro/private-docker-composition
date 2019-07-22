@@ -12,8 +12,8 @@ services:
     environment:
       MYSQL_DATABASE: nextcloud_db
       MYSQL_USER: nextcloud_db_user
-      MYSQL_PASSWORD: ${NC_MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${NC_MYSQL_ROOT_PASSWORD}
+      MYSQL_PASSWORD: ${NEXTCLOUD_MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${NEXTCLOUD_MYSQL_ROOT_PASSWORD}
 
   nextcloud_redis:
     image: redis:alpine
@@ -38,10 +38,10 @@ services:
     volumes:
       - nextcloud:/var/www/html:ro
     environment:
-      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      VIRTUAL_HOST: ${NC_URLS}
+      LETSENEXTCLOUDRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      VIRTUAL_HOST: ${NEXTCLOUD_URLS}
       VIRTUAL_NETWORK: nginx-proxy
-      LETSENCRYPT_HOST: ${NC_URLS}
+      LETSENCRYPT_HOST: ${NEXTCLOUD_URLS}
     depends_on:
       - nextcloud_app
 
@@ -54,11 +54,11 @@ services:
       - MKNOD
     environment:
       domain: ${DOMAIN}
-      LETSENCRYPT_HOST: ${NC_OFFICE_URLS}
+      LETSENCRYPT_HOST: ${NEXTCLOUD_OFFICE_URLS}
       VIRTUAL_NETWORK: nginx-proxy
       VIRTUAL_PORT: 9980
       VIRTUAL_PROTO: https
-      LETSENCRYPT_HOST: ${NC_OFFICE_URLS}
+      LETSENCRYPT_HOST: ${NEXTCLOUD_OFFICE_URLS}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
 
   nextcloud_cron:
@@ -91,9 +91,9 @@ services:
       - wordpress_db:/var/lib/mysql
     environment:
       MYSQL_DATABASE: worpress_db
-      MYSQL_USER: wp_db_user
-      MYSQL_PASSWORD: ${WP_MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${WP_MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: wordpress_db_user
+      MYSQL_PASSWORD: ${WORDPRESS_MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${WORDPRESS_MYSQL_ROOT_PASSWORD}
 
   wordpress:
     image: wordpress:latest
@@ -105,12 +105,12 @@ services:
        - wordpress_db:/var/lib/mysql
     environment:
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      VIRTUAL_HOST: ${WP_URLS}
-      LETSENCRYPT_HOST: ${WP_URLS}
+      VIRTUAL_HOST: ${WORDPRESS_URLS}
+      LETSENCRYPT_HOST: ${WORDPRESS_URLS}
       WORDPRESS_DB_HOST: wordpress_db
       WORDPRESS_DB_NAME: wordpress_db
-      WORDPRESS_DB_USER: wp_db_user
-      WORDPRESS_DB_PASSWORD: ${WP_MYSQL_PASSWORD}
+      WORDPRESS_DB_USER: wordpress_db_user
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_MYSQL_PASSWORD}
   # Wordpress end # # #
 
   # # # # # Adminer start
@@ -128,7 +128,7 @@ services:
   # # # # Gitlab start
   gitlab:
     image: gitlab/gitlab-ce:latest
-    hostname: ${GL_URLS}
+    hostname: ${GITLAB_URLS}
     restart: unless-stopped
     ports:
     - target: 22
@@ -140,8 +140,8 @@ services:
     environment:
       # GITLAB_OMNIBUS_CONFIG: "registry['log_level'] = 'warn'" # @FIXME, no effect
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      VIRTUAL_HOST: ${GL_URLS}
-      LETSENCRYPT_HOST: ${GL_URLS}
+      VIRTUAL_HOST: ${GITLAB_URLS}
+      LETSENCRYPT_HOST: ${GITLAB_URLS}
 
   gitlab-runner:
     image: gitlab/gitlab-runner:latest
