@@ -7,7 +7,7 @@ Current Groups:
 * Git
   * with Gitlab community edition and a Gitlab runner container
 * Monitoring
-  * with Proetheus and Grafana
+  * with Prometheus and Grafana
 * Personal plattform
   * currently wordpress
 
@@ -49,6 +49,7 @@ Any kind of contribution is welcome, add more service groups to your liking and 
 [Wordpress Docker Repo](https://github.com/docker-library/wordpress)
 
 [Wordpress Repo](https://github.com/WordPress/WordPress)
+
 ---
 
 [Letsencrypt-nginx-proxy-companion](https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion/)
@@ -83,8 +84,11 @@ Any kind of contribution is welcome, add more service groups to your liking and 
 ## Todos
 
 [ ] Use networks for groups
+
 [ ] Configure Grafana dashboard
+
 [ ] Clone Prometheus in container
+
 [ ] Adding Collabora Templates to Nextcloud
 
 ### Bookmarks
