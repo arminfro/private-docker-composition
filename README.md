@@ -77,7 +77,9 @@ Any kind of contribution is welcome, add more service groups to your liking and 
 
 [Nextcloud nginx.conf](https://github.com/nextcloud/docker/blob/master/.examples/docker-compose/with-nginx-proxy-self-signed-ssl/mariadb/fpm/web/nginx.conf)
 
-[Nextcloud Collabora](https://help.nextcloud.com/t/collabora-configuration-with-docker-compose/3970/5)
+[Collabora in Docker](https://www.collaboraoffice.com/code/docker/)
+
+[Nextcloud Collabora](https://nextcloud.com/collaboraonline/)
 
 [Prometheus Grafana Docker stack](https://github.com/vegasbrianc/prometheus)
 

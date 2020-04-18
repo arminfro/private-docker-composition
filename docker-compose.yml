@@ -47,30 +47,33 @@ services:
     volumes:
       - nextcloud:/var/www/html:ro
     environment:
-      LETSENEXTCLOUDRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
       VIRTUAL_HOST: ${NEXTCLOUD_URLS}
       VIRTUAL_NETWORK: nginx-proxy
       LETSENCRYPT_HOST: ${NEXTCLOUD_URLS}
     depends_on:
       - nextcloud_app
+      - collabora
 
-  # Causes bug when opening file from new Nextcloud menu
-  #  WRN  Kit connection lost without exit arriving from wsd. Setting TerminationFlag| kit/Kit.cpp:2236
-  #  collabora exited with code 139
   collabora:
     image: collabora/code
     cap_add:
       - MKNOD
     networks:
       - frontend
+      - backend
+    expose:
+      - 9980
     environment:
       domain: ${DOMAIN}
-      LETSENCRYPT_HOST: ${NEXTCLOUD_OFFICE_URLS}
-      VIRTUAL_NETWORK: nginx-proxy
-      VIRTUAL_PORT: 9980
-      VIRTUAL_PROTO: https
+      username: ${OFFICE_ADMIN}
+      password: ${OFFICE_PASSWORD}
+      dictionaries: 'de en'
+      VIRTUAL_HOST: ${NEXTCLOUD_OFFICE_URLS}
       LETSENCRYPT_HOST: ${NEXTCLOUD_OFFICE_URLS}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      VIRTUAL_PORT: 9980
+      extra_params: '--o:ssl.enable=false --o:ssl.termination=true'
 
   nextcloud_cron:
     image: nextcloud:fpm-alpine
@@ -84,67 +87,68 @@ services:
       - nextcloud_db
       - nextcloud_redis
 
-  nextcloud_letsencrypt_companion:
-    image: jrcs/letsencrypt-nginx-proxy-companion
-    restart: unless-stopped
-    networks:
-      - backend
-    volumes:
-      - proxy_certs:/etc/nginx/certs
-      - proxy_vhost:/etc/nginx/vhost.d
-      - proxy_html:/usr/share/nginx/html
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    depends_on:
-      - nginx_proxy
+  # nextcloud_letsencrypt_companion:
+  #   image: jrcs/letsencrypt-nginx-proxy-companion
+  #   restart: unless-stopped
+  #   networks:
+  #     - backend
+  #   volumes:
+  #     - proxy_certs:/etc/nginx/certs
+  #     - proxy_vhost:/etc/nginx/vhost.d
+  #     - proxy_html:/usr/share/nginx/html
+  #     # - ./uploadsize.conf:/etc/nginx/conf.d/uploadsize.conf:ro
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #   depends_on:
+  #     - nginx_proxy
   # Nextcloud end # # #
 
   # # # # Wordpress start
-  wordpress_db:
-    image: mariadb:latest
-    restart: unless-stopped
-    networks:
-      - frontend # not sure why, but db needs to be in frontend network
-      - backend
-    volumes:
-      - wordpress_db:/var/lib/mysql
-    environment:
-      MYSQL_DATABASE: wordpress_db
-      MYSQL_USER: wordpress_db_user
-      MYSQL_PASSWORD: ${WORDPRESS_MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${WORDPRESS_MYSQL_ROOT_PASSWORD}
+  # wordpress_db:
+  #   image: mariadb:latest
+  #   restart: unless-stopped
+  #   networks:
+  #     - frontend # not sure why, but db needs to be in frontend network
+  #     - backend
+  #   volumes:
+  #     - wordpress_db:/var/lib/mysql
+  #   environment:
+  #     MYSQL_DATABASE: wordpress_db
+  #     MYSQL_USER: wordpress_db_user
+  #     MYSQL_PASSWORD: ${WORDPRESS_MYSQL_PASSWORD}
+  #     MYSQL_ROOT_PASSWORD: ${WORDPRESS_MYSQL_ROOT_PASSWORD}
 
-  wordpress:
-    image: wordpress:latest
-    restart: unless-stopped
-    networks:
-      - frontend
-    depends_on:
-      - wordpress_db
-    volumes:
-       - wordpress:/var/www/html
-       - wordpress_db:/var/lib/mysql
-    environment:
-      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      VIRTUAL_HOST: ${WORDPRESS_URLS}
-      LETSENCRYPT_HOST: ${WORDPRESS_URLS}
-      WORDPRESS_DB_HOST: wordpress_db
-      WORDPRESS_DB_NAME: wordpress_db
-      WORDPRESS_DB_USER: wordpress_db_user
-      WORDPRESS_DB_PASSWORD: ${WORDPRESS_MYSQL_PASSWORD}
+  # wordpress:
+  #   image: wordpress:latest
+  #   restart: unless-stopped
+  #   networks:
+  #     - frontend
+  #   depends_on:
+  #     - wordpress_db
+  #   volumes:
+  #      - wordpress:/var/www/html
+  #      - wordpress_db:/var/lib/mysql
+  #   environment:
+  #     LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+  #     VIRTUAL_HOST: ${WORDPRESS_URLS}
+  #     LETSENCRYPT_HOST: ${WORDPRESS_URLS}
+  #     WORDPRESS_DB_HOST: wordpress_db
+  #     WORDPRESS_DB_NAME: wordpress_db
+  #     WORDPRESS_DB_USER: wordpress_db_user
+  #     WORDPRESS_DB_PASSWORD: ${WORDPRESS_MYSQL_PASSWORD}
   # Wordpress end # # #
 
   # # # # # Adminer start
-  adminer:
-    image: adminer #:fastcgi # @TODO, make fastcgi image working
-    restart: unless-stopped
-    networks:
-      - frontend
-    environment:
-      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      VIRTUAL_HOST: ${ADMINER_URLS}
-      LETSENCRYPT_HOST: ${ADMINER_URLS}
-      # VIRTUAL_PORT: 9000
-      # VIRTUAL_PROTO: fastcgi
+  # adminer:
+  #   image: adminer #:fastcgi # @TODO, make fastcgi image working
+  #   restart: unless-stopped
+  #   networks:
+  #     - frontend
+  #   environment:
+  #     LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+  #     VIRTUAL_HOST: ${ADMINER_URLS}
+  #     LETSENCRYPT_HOST: ${ADMINER_URLS}
+  #     # VIRTUAL_PORT: 9000
+  #     # VIRTUAL_PROTO: fastcgi
   # Adminer end # # #
 
   # # # # Gitlab start
@@ -179,81 +183,81 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
   # Gitlab end # # #
 
-  # # # # Prometheus start
-  prometheus:
-    image: prom/prometheus:v2.1.0
-    restart: unless-stopped
-    networks:
-      - backend
-    volumes:
-      - ./monitor/prometheus/:/etc/prometheus/
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-    links:
-      - cadvisor:cadvisor
-      - alertmanager:alertmanager
-    depends_on:
-      - cadvisor
+  # # # # # Prometheus start
+  # prometheus:
+  #   image: prom/prometheus:v2.1.0
+  #   restart: unless-stopped
+  #   networks:
+  #     - backend
+  #   volumes:
+  #     - ./monitor/prometheus/:/etc/prometheus/
+  #     - prometheus_data:/prometheus
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #     - '--storage.tsdb.path=/prometheus'
+  #     - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+  #     - '--web.console.templates=/usr/share/prometheus/consoles'
+  #   links:
+  #     - cadvisor:cadvisor
+  #     - alertmanager:alertmanager
+  #   depends_on:
+  #     - cadvisor
 
-  node-exporter:
-    image: prom/node-exporter
-    restart: unless-stopped
-    networks:
-      - backend
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - --collector.filesystem.ignored-mount-points
-      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+  # node-exporter:
+  #   image: prom/node-exporter
+  #   restart: unless-stopped
+  #   networks:
+  #     - backend
+  #   volumes:
+  #     - /proc:/host/proc:ro
+  #     - /sys:/host/sys:ro
+  #     - /:/rootfs:ro
+  #   command:
+  #     - '--path.procfs=/host/proc'
+  #     - '--path.sysfs=/host/sys'
+  #     - --collector.filesystem.ignored-mount-points
+  #     - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
 
-  alertmanager:
-    image: prom/alertmanager
-    restart: unless-stopped
-    networks:
-      - backend
-    volumes:
-      - ./monitor/alertmanager/:/etc/alertmanager/
-    command:
-      - '--config.file=/etc/alertmanager/config.yml'
-      - '--storage.path=/alertmanager'
+  # alertmanager:
+  #   image: prom/alertmanager
+  #   restart: unless-stopped
+  #   networks:
+  #     - backend
+  #   volumes:
+  #     - ./monitor/alertmanager/:/etc/alertmanager/
+  #   command:
+  #     - '--config.file=/etc/alertmanager/config.yml'
+  #     - '--storage.path=/alertmanager'
 
-  cadvisor:
-    image: google/cadvisor
-    restart: unless-stopped
-    networks:
-      - backend
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:rw
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
+  # cadvisor:
+  #   image: google/cadvisor
+  #   restart: unless-stopped
+  #   networks:
+  #     - backend
+  #   volumes:
+  #     - /:/rootfs:ro
+  #     - /var/run:/var/run:rw
+  #     - /sys:/sys:ro
+  #     - /var/lib/docker/:/var/lib/docker:ro
 
-  grafana:
-    image: grafana/grafana
-    restart: unless-stopped
-    user: "104"
-    depends_on:
-      - prometheus
-    networks:
-      - frontend
-    environment:
-      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
-      VIRTUAL_HOST: ${GRAFANA_URLS}
-      LETSENCRYPT_HOST: ${GRAFANA_URLS}
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitor/grafana/provisioning/:/etc/grafana/provisioning/
-    env_file:
-      - ./monitor/grafana/config.monitoring
-  # Prometheus end # # #
+  # grafana:
+  #   image: grafana/grafana
+  #   restart: unless-stopped
+  #   user: "104"
+  #   depends_on:
+  #     - prometheus
+  #   networks:
+  #     - frontend
+  #   environment:
+  #     LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+  #     VIRTUAL_HOST: ${GRAFANA_URLS}
+  #     LETSENCRYPT_HOST: ${GRAFANA_URLS}
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+  #     - ./monitor/grafana/provisioning/:/etc/grafana/provisioning/
+  #   env_file:
+  #     - ./monitor/grafana/config.monitoring
+  # # Prometheus end # # #
 
   # # # # Proxy-Webserver start
   letsencrypt:

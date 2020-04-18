@@ -1,14 +1,17 @@
-FROM nextcloud:16.0.3-fpm
+FROM nextcloud:18-fpm
+
+# see https://github.com/nextcloud/docker/blob/master/.examples/dockerfiles/full/fpm/Dockerfile
 
 RUN set -ex; \
     \
     apt-get update; \
     apt-get install -y --no-install-recommends \
         ffmpeg \
-        libmagickcore-6.q16-3-extra \
+        libmagickcore-6.q16-6-extra \
+        procps \
         smbclient \
         supervisor \
-#       libreoffice \
+        libreoffice \
     ; \
     rm -rf /var/lib/apt/lists/*
 
@@ -20,16 +23,13 @@ RUN set -ex; \
     apt-get install -y --no-install-recommends \
         libbz2-dev \
         libc-client-dev \
-        libgmp3-dev \
         libkrb5-dev \
         libsmbclient-dev \
     ; \
     \
     docker-php-ext-configure imap --with-kerberos --with-imap-ssl; \
-    ln -s "/usr/include/$(dpkg-architecture --query DEB_BUILD_MULTIARCH)/gmp.h" /usr/include/gmp.h; \
     docker-php-ext-install \
         bz2 \
-        gmp \
         imap \
     ; \
     pecl install smbclient; \
@@ -54,8 +54,8 @@ RUN mkdir -p \
     /var/run/supervisord \
 ;
 
-COPY supervisord.conf /etc/supervisor/supervisord.conf
+COPY supervisord.conf /
 
 ENV NEXTCLOUD_UPDATE=1
 
-CMD ["/usr/bin/supervisord"]
+CMD ["/usr/bin/supervisord", "-c", "/supervisord.conf"]
