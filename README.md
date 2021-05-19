@@ -6,16 +6,10 @@ Current Groups:
   * with Nextcloud(fpm), Redis caching, Collabora office and Cron tasks
 * Git
   * with Gitlab community edition and a Gitlab runner container
-* Monitoring
-  * with Prometheus and Grafana
-* Personal plattform
-  * currently wordpress
 
 Intention is one compose file with many services at once but independent in the scope of groups (so each group can be deactived anytime).
 
 There is also a Webserver group (with nginx-proxy-companion service) which is not optional.
-
-Any kind of contribution is welcome, add more service groups to your liking and bring it up :)
 
 ## Requirements
 
@@ -44,30 +38,9 @@ Any kind of contribution is welcome, add more service groups to your liking and 
 
 ---
 
-[Wordpress Docker Hub](https://hub.docker.com/_/wordpress)
-
-[Wordpress Docker Repo](https://github.com/docker-library/wordpress)
-
-[Wordpress Repo](https://github.com/WordPress/WordPress)
-
----
-
 [Letsencrypt-nginx-proxy-companion](https://github.com/JrCs/docker-letsencrypt-nginx-proxy-companion/)
 
 [Nginx-proxy](https://github.com/jwilder/nginx-proxy)
-
----
-
-[Prometheus Repo](https://github.com/prometheus/prometheus)
-
-[Prometheus Docs](https://prometheus.io/docs/introduction/overview/)
-
-[Grafana Docs](https://grafana.com/docs/)
-
-[Grafana Docker Repo](https://github.com/grafana/grafana-docker)
-
-[Grafana Repo](https://github.com/grafana/grafana)
-
 
 ## References
 
@@ -81,15 +54,9 @@ Any kind of contribution is welcome, add more service groups to your liking and 
 
 [Nextcloud Collabora](https://nextcloud.com/collaboraonline/)
 
-[Prometheus Grafana Docker stack](https://github.com/vegasbrianc/prometheus)
-
 ## Todos
 
 [x] Use networks for groups
-
-[ ] Configure Grafana dashboard
-
-[ ] Clone Prometheus in container
 
 [ ] Adding Collabora Templates to Nextcloud
 

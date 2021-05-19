@@ -1,4 +1,4 @@
-FROM nextcloud:18-fpm
+FROM nextcloud:19-fpm
 
 # see https://github.com/nextcloud/docker/blob/master/.examples/dockerfiles/full/fpm/Dockerfile
 
@@ -7,7 +7,7 @@ RUN set -ex; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
         ffmpeg \
-        libmagickcore-6.q16-6-extra \
+        libmagickcore-6.q16-3-extra \
         procps \
         smbclient \
         supervisor \
