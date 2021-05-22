@@ -121,8 +121,6 @@ services:
     restart: unless-stopped
     networks:
       - backend
-    ports:
-     - 8443:8443/tcp
     volumes:
      - ./matrix/data:/data
     depends_on:
@@ -131,6 +129,7 @@ services:
       SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
       SYNAPSE_SERVER_NAME: ${MATRIX_SYNAPSE_URL}
       VIRTUAL_HOST: ${MATRIX_SYNAPSE_URLS}
+      VIRTUAL_PORT: 8008
       LETSENCRYPT_HOST: ${MATRIX_SYNAPSE_URLS}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
   # Matrix end # # #
