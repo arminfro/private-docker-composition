@@ -37,6 +37,7 @@ services:
     depends_on:
       - nextcloud_db
       - nextcloud_redis
+      - nextcloud_coturn
 
   nextcloud_web:
     build: ./nextcloud_web
@@ -87,19 +88,16 @@ services:
       - nextcloud_db
       - nextcloud_redis
 
-  nextcloud_letsencrypt_companion:
-    image: jrcs/letsencrypt-nginx-proxy-companion
+  nextcloud_coturn:
+    build: ./nextcloud_coturn
     restart: unless-stopped
-    networks:
-      - backend
-    volumes:
-      - proxy_certs:/etc/nginx/certs
-      - proxy_vhost:/etc/nginx/vhost.d
-      - proxy_html:/usr/share/nginx/html
-      # - ./uploadsize.conf:/etc/nginx/conf.d/uploadsize.conf:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+        - 3478:3478
     depends_on:
-      - nginx_proxy
+      - nextcloud_db
+    environment:
+        - COTURN_SECRET=${COTURN_SECRET}
+        - COTURN_REALM=${COTURN_REALM}
   # Nextcloud end # # #
 
   # # # # Gitlab start
