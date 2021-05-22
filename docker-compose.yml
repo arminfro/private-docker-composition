@@ -66,7 +66,7 @@ services:
     expose:
       - 9980
     environment:
-      domain: ${DOMAIN}
+      domain: ${NEXTCLOUD_DOMAIN_ESCAPED}
       username: ${OFFICE_ADMIN}
       password: ${OFFICE_PASSWORD}
       dictionaries: 'de en'
@@ -92,13 +92,48 @@ services:
     build: ./nextcloud_coturn
     restart: unless-stopped
     ports:
-        - 3478:3478
+        - 3478:3478/udp
     depends_on:
       - nextcloud_db
     environment:
         - COTURN_SECRET=${COTURN_SECRET}
         - COTURN_REALM=${COTURN_REALM}
   # Nextcloud end # # #
+
+  # # # # # Matrix start
+  matrix_postgres:
+    image: postgres:12-alpine
+    restart: always
+    networks:
+      - backend
+    volumes:
+     - matrix_postgres_data:/var/lib/postgresql/data
+
+    # These will be used in homeserver.yaml later on
+    environment:
+     - POSTGRES_PASSWORD=${MATRIX_POSTGRES_PASSWORD}
+     - POSTGRES_USER=${MATRIX_POSTGRES_USER}
+     # ensure the database gets created correctly, https://github.com/matrix-org/synapse/blob/master/docs/postgres.md#set-up-database
+     - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+
+  matrix_synapse:
+    image: matrixdotorg/synapse:latest
+    restart: unless-stopped
+    networks:
+      - backend
+    ports:
+     - 8443:8443/tcp
+    volumes:
+     - ./matrix/data:/data
+    depends_on:
+      - matrix_postgres
+    environment:
+      SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
+      SYNAPSE_SERVER_NAME: ${MATRIX_SYNAPSE_URL}
+      VIRTUAL_HOST: ${MATRIX_SYNAPSE_URLS}
+      LETSENCRYPT_HOST: ${MATRIX_SYNAPSE_URLS}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+  # Matrix end # # #
 
   # # # # Gitlab start
   gitlab:
@@ -130,7 +165,7 @@ services:
     volumes:
       - /srv/gitlab-runner/config:/etc/gitlab-runner
       - /var/run/docker.sock:/var/run/docker.sock
-  # Gitlab end # # #
+  # # Gitlab end # # #
 
   # # # # Proxy-Webserver start
   letsencrypt:
@@ -185,6 +220,9 @@ volumes:
   gitlab_config:
   gitlab_logs:
   gitlab_data:
+
+  matrix_postgres_data:
+  matrix_synapse_data:
 
 networks:
   frontend:
