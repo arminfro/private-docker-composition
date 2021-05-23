@@ -128,10 +128,21 @@ services:
     environment:
       SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
       SYNAPSE_SERVER_NAME: ${MATRIX_SYNAPSE_URL}
+
+  matrix_proxy:
+    build: ./matrix_proxy
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
+    volumes:
+      - proxy_certs:/etc/nginx/certs:ro
+    environment:
       VIRTUAL_HOST: ${MATRIX_SYNAPSE_URLS}
-      VIRTUAL_PORT: 8008
       LETSENCRYPT_HOST: ${MATRIX_SYNAPSE_URLS}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+    depends_on:
+      - matrix_synapse
   # Matrix end # # #
 
   # # # # Gitlab start
